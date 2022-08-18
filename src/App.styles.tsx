@@ -5,5 +5,5 @@ export const AppContainer = styled.div`
 `;
 
 export const Heading = styled.h1`
-  font-size: 5rem;
+  ${({ theme }) => theme.typography.heading1}
 `;
