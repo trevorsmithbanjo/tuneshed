@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { saveAudio, getAudio } from '@/utils/db';
 
 const AudioRecorder = () => {
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
@@ -13,15 +12,15 @@ const AudioRecorder = () => {
   const audioChunksRef = useRef<Blob[]>([]);
 
   const [isRecording, setIsRecording] = useState(false);
-  const [audioKey, setAudioKey] = useState<any>(null);
+
+  const [recordingName, setRecordingName] = useState('');
+  const [recordings, setRecordings] = useState([]);
 
   useEffect(() => {
     // Request access to the microphone
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
-        console.log(stream);
-
         setAudioStream(stream);
       })
       .catch((err) => {
@@ -37,14 +36,40 @@ const AudioRecorder = () => {
   }, []);
 
   useEffect(() => {
-    if (audioKey) {
-      loadAudio(audioKey);
-    }
-  }, [audioKey]);
+    fetchRecordings();
+  }, []);
 
-  useEffect(() => {
-    console.log('audioChunks', audioChunks);
-  }, [audioChunks]);
+  const fetchRecordings = async () => {
+    try {
+      const response = await fetch('api/recordings');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      console.log('Recordings', data);
+      setRecordings(data.recordings);
+    } catch (error) {
+      console.error('Error fetching recordings:', error);
+    }
+  };
+
+  const saveAudio = async (audioBlob: Blob, name: string) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('name', name);
+
+    const response = await fetch('/api/recordings', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    return response.json();
+  };
 
   const startRecording = () => {
     if (audioStream) {
@@ -81,34 +106,52 @@ const AudioRecorder = () => {
     // For demonstration, we'll log it to the console
     console.log(audioBlob);
 
-    saveAudio(audioBlob)
-      .then((key) => {
-        setAudioKey(key);
-        loadAudio(key);
+    saveAudio(audioBlob, recordingName)
+      .then((response) => {
+        console.log('Recording saved', response);
+        // TODO: Display to user that recording was saved
       })
-      .catch((error) => console.error('Error saving audio', error));
+      .catch((error) => {
+        console.error('Error saving audio', error);
+        // TODO: Display to user there was an error
+      });
+
     setAudioChunks([]);
   };
 
-  const loadAudio = (key: any) => {
-    getAudio(key)
-      .then((audioBlob) => {
-        const audioUrl = URL.createObjectURL(audioBlob as Blob | MediaSource);
-        console.log('audioUrl');
-        console.log(audioUrl);
-        const audioElement = document.querySelector('audio');
-        if (audioElement) {
-          audioElement.src = audioUrl;
-          audioElement.load();
-        }
-      })
-      .catch((error) => console.error('Error loading audio', error));
-  };
+  // const loadAudio = (key: any) => {
+  //   getAudio(key)
+  //     .then((audioBlob) => {
+  //       const audioUrl = URL.createObjectURL(audioBlob as Blob | MediaSource);
+  //       console.log('audioUrl');
+  //       console.log(audioUrl);
+  //       const audioElement = document.querySelector('audio');
+  //       if (audioElement) {
+  //         audioElement.src = audioUrl;
+  //         audioElement.load();
+  //       }
+  //     })
+  //     .catch((error) => console.error('Error loading audio', error));
+  // };
+
+  // useEffect(() => {
+  //   console.log(recordingName);
+  // }, [recordingName]);
 
   return (
     <article className="flex p-20 flex-col items-center justify-evenly">
       <p className="text-xl2">Recorder</p>
       <audio controls></audio>
+      <form className="my-12">
+        <label className="mr-6">Name</label>
+        <input
+          className="text-black min-h-20 p-1"
+          type="text"
+          name="name"
+          value={recordingName}
+          onChange={(e) => setRecordingName(e.target.value)}
+        />
+      </form>
       <button
         className="p-2 uppercase font-semibold bg-indigo-500 hover:opacity-50 my-4 rounded disabled:bg-gray-300 disabled:opacity-50"
         onClick={startRecording}

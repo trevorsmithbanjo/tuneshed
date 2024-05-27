@@ -1,35 +1,48 @@
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/utils/prisma';
 
-export async function postAudio(
-  req: { body: { name: any; audioData: any } },
-  res: {
-    status: (arg0: number) => {
-      (): any;
-      new (): any;
-      json: {
-        (arg0: {
-          id?: string;
-          name?: string;
-          audioData?: Buffer;
-          createdAt?: Date;
-          error?: string;
-        }): void;
-        new (): any;
-      };
-    };
-  }
-) {
+export const POST = async (req: NextRequest) => {
   try {
-    const { name, audioData } = req.body;
+    const data = await req.formData();
+    const audioFile = data.get('audio') as Blob;
+    const name = data.get('name') as string;
 
-    const audioBuffer = Buffer.from(audioData, 'base64');
+    if (!audioFile || !name) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid data' },
+        { status: 400 }
+      );
+    }
+
+    const bytes = await audioFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
     const newRecording = await prisma.audioRecording.create({
-      data: { name, audioData: audioBuffer },
+      data: {
+        name,
+        audioData: buffer,
+      },
     });
-    res.status(200).json(newRecording);
+
+    return NextResponse.json({ success: true, newRecording }, { status: 201 });
   } catch (error) {
-    console.error('Error saving audio', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error uploading file:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-}
+};
+
+export const GET = async () => {
+  try {
+    const recordings = await prisma.audioRecording.findMany();
+    return NextResponse.json({ success: true, recordings }, { status: 200 });
+  } catch (error) {
+    console.error('Error recieving recordings', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+};
