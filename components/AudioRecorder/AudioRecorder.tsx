@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { fetchRecordings, saveAudio } from '@/utils/api';
 
 const AudioRecorder = () => {
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
@@ -36,40 +37,10 @@ const AudioRecorder = () => {
   }, []);
 
   useEffect(() => {
-    fetchRecordings();
+    fetchRecordings()
+      .then((data) => setRecordings(data.data))
+      .catch((error) => console.error(error));
   }, []);
-
-  const fetchRecordings = async () => {
-    try {
-      const response = await fetch('api/recordings');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
-      console.log('Recordings', data);
-      setRecordings(data.recordings);
-    } catch (error) {
-      console.error('Error fetching recordings:', error);
-    }
-  };
-
-  const saveAudio = async (audioBlob: Blob, name: string) => {
-    const formData = new FormData();
-    formData.append('audio', audioBlob, 'recording.webm');
-    formData.append('name', name);
-
-    const response = await fetch('/api/recordings', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    return response.json();
-  };
 
   const startRecording = () => {
     if (audioStream) {
