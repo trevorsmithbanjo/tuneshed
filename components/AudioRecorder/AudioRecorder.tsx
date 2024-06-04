@@ -112,7 +112,6 @@ const AudioRecorder = () => {
   return (
     <article className="flex p-20 flex-col items-center justify-evenly">
       <p className="text-xl2">Recorder</p>
-      <audio controls></audio>
       <form className="my-12">
         <label className="mr-6">Name</label>
         <input
